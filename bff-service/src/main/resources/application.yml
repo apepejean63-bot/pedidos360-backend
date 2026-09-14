@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff-service
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Mismo tenant que pedidos-service. Reemplazar AZURE_TENANT_ID una vez
+          # tengan el registro real en Azure AD / Microsoft Entra ID.
+          issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
+          jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/discovery/v2.0/keys
+
+azure:
+  client-id: ${AZURE_CLIENT_ID_BACKEND}
+
+# URL interna donde corre pedidos-service. En EC2 seria algo como
+# http://localhost:8081 si estan en la misma instancia, o la IP privada/DNS interno
+# si estan en instancias separadas.
+pedidos:
+  service:
+    url: ${PEDIDOS_SERVICE_URL:http://localhost:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
