@@ -5,6 +5,7 @@ import cl.duocuc.pedidos360.pedidos.dto.PedidoRequest;
 import cl.duocuc.pedidos360.pedidos.entity.DetallePedido;
 import cl.duocuc.pedidos360.pedidos.entity.EstadoPedido;
 import cl.duocuc.pedidos360.pedidos.entity.Pedido;
+import cl.duocuc.pedidos360.pedidos.messaging.PedidoProducer;
 import cl.duocuc.pedidos360.pedidos.repository.PedidoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +16,14 @@ import java.util.List;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final PedidoProducer pedidoProducer;
 
-    public PedidoService(PedidoRepository pedidoRepository) {
+    public PedidoService(
+            PedidoRepository pedidoRepository,
+            PedidoProducer pedidoProducer) {
+
         this.pedidoRepository = pedidoRepository;
+        this.pedidoProducer = pedidoProducer;
     }
 
     @Transactional(readOnly = true)
@@ -33,34 +39,50 @@ public class PedidoService {
 
     @Transactional
     public Pedido crear(PedidoRequest request) {
+
         Pedido pedido = new Pedido();
+
         pedido.setCliente(request.getCliente());
         pedido.setEmail(request.getEmail());
         pedido.setEstado(EstadoPedido.PENDIENTE);
 
         for (DetalleRequest detalleReq : request.getDetalles()) {
+
             DetallePedido detalle = new DetallePedido();
+
             detalle.setProducto(detalleReq.getProducto());
             detalle.setCantidad(detalleReq.getCantidad());
             detalle.setPrecioUnitario(detalleReq.getPrecioUnitario());
+
             pedido.addDetalle(detalle);
         }
 
-        return pedidoRepository.save(pedido);
+        // Primero guardamos el pedido para obtener su ID.
+        Pedido pedidoGuardado = pedidoRepository.save(pedido);
+
+        // Luego publicamos el evento asincrono en RabbitMQ.
+        pedidoProducer.publicarPedidoCreado(pedidoGuardado);
+
+        return pedidoGuardado;
     }
 
     @Transactional
     public Pedido cambiarEstado(Long id, EstadoPedido nuevoEstado) {
+
         Pedido pedido = buscarPorId(id);
+
         pedido.setEstado(nuevoEstado);
+
         return pedidoRepository.save(pedido);
     }
 
     @Transactional
     public void eliminar(Long id) {
+
         if (!pedidoRepository.existsById(id)) {
             throw new PedidoNotFoundException(id);
         }
+
         pedidoRepository.deleteById(id);
     }
 }

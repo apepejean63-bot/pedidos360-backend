@@ -5,8 +5,24 @@ spring:
   application:
     name: pedidos-service
 
+  # =========================
+  # RABBITMQ
+  # =========================
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+
+  # =========================
+  # BASE DE DATOS MYSQL
+  # =========================
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pedidos360}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:pedidos360}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -20,22 +36,38 @@ spring:
         format_sql: true
     open-in-view: false
 
+  # =========================
+  # SEGURIDAD / MICROSOFT ENTRA ID
+  # =========================
   security:
     oauth2:
       resourceserver:
         jwt:
-          # IMPORTANTE: reemplazar AZURE_TENANT_ID por el Tenant ID real una vez que
-          # tengan el registro en Azure AD / Microsoft Entra ID.
           issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
           jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID}/discovery/v2.0/keys
 
-# Client ID de la app "Pedidos360-API" registrada en Azure AD.
-# Se usa para validar el "audience" del token (evita que tokens de otras apps sean aceptados aqui).
+# Client ID de la aplicación Pedidos360-API
 azure:
   client-id: ${AZURE_CLIENT_ID_BACKEND}
 
+# =========================
+# ACTUATOR
+# =========================
 management:
   endpoints:
     web:
       exposure:
         include: health
+
+# =========================
+# CONFIGURACION DE MENSAJERIA
+# =========================
+rabbitmq:
+  pedidos:
+    exchange: pedidos.exchange
+    queue: pedidos.queue
+    routing-key: pedidos.creado
+
+    dlx: pedidos.dlx
+    dlq: pedidos.dlq
+    dlq-routing-key: pedidos.dlq
