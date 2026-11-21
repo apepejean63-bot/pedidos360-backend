@@ -5,6 +5,7 @@ import cl.duocuc.pedidos360.pedidos.dto.PedidoRequest;
 import cl.duocuc.pedidos360.pedidos.entity.DetallePedido;
 import cl.duocuc.pedidos360.pedidos.entity.EstadoPedido;
 import cl.duocuc.pedidos360.pedidos.entity.Pedido;
+import cl.duocuc.pedidos360.pedidos.messaging.PedidoEventoProducer;
 import cl.duocuc.pedidos360.pedidos.messaging.PedidoProducer;
 import cl.duocuc.pedidos360.pedidos.repository.PedidoRepository;
 import org.springframework.stereotype.Service;
@@ -17,13 +18,16 @@ public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final PedidoProducer pedidoProducer;
+    private final PedidoEventoProducer pedidoEventoProducer;
 
     public PedidoService(
             PedidoRepository pedidoRepository,
-            PedidoProducer pedidoProducer) {
+            PedidoProducer pedidoProducer,
+            PedidoEventoProducer pedidoEventoProducer) {
 
         this.pedidoRepository = pedidoRepository;
         this.pedidoProducer = pedidoProducer;
+        this.pedidoEventoProducer = pedidoEventoProducer;
     }
 
     @Transactional(readOnly = true)
@@ -63,6 +67,9 @@ public class PedidoService {
         // Luego publicamos el evento asincrono en RabbitMQ.
         pedidoProducer.publicarPedidoCreado(pedidoGuardado);
 
+        // Y publicamos el evento de dominio en Kafka.
+        pedidoEventoProducer.publicarCreado(pedidoGuardado);
+
         return pedidoGuardado;
     }
 
@@ -73,7 +80,11 @@ public class PedidoService {
 
         pedido.setEstado(nuevoEstado);
 
-        return pedidoRepository.save(pedido);
+        Pedido pedidoActualizado = pedidoRepository.save(pedido);
+
+        pedidoEventoProducer.publicarEstadoCambiado(pedidoActualizado);
+
+        return pedidoActualizado;
     }
 
     @Transactional

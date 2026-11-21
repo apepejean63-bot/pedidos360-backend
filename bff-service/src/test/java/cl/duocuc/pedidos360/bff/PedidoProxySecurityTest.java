@@ -8,6 +8,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -27,5 +29,23 @@ class PedidoProxySecurityTest {
     void sinToken_deberiaRetornar401() throws Exception {
         mockMvc.perform(get("/api/v1/pedidos"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void preflightDesdeElFrontend_deberiaSerAutorizadoSinToken() throws Exception {
+        mockMvc.perform(options("/api/v1/pedidos")
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"));
+    }
+
+    @Test
+    void preflightDesdeUnOrigenAjeno_deberiaSerRechazado() throws Exception {
+        mockMvc.perform(options("/api/v1/pedidos")
+                        .header("Origin", "http://sitio-ajeno.example")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
     }
 }

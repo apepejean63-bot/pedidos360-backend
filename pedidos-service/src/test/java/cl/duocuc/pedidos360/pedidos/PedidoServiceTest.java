@@ -4,6 +4,7 @@ import cl.duocuc.pedidos360.pedidos.dto.DetalleRequest;
 import cl.duocuc.pedidos360.pedidos.dto.PedidoRequest;
 import cl.duocuc.pedidos360.pedidos.entity.EstadoPedido;
 import cl.duocuc.pedidos360.pedidos.entity.Pedido;
+import cl.duocuc.pedidos360.pedidos.messaging.PedidoEventoProducer;
 import cl.duocuc.pedidos360.pedidos.messaging.PedidoProducer;
 import cl.duocuc.pedidos360.pedidos.repository.PedidoRepository;
 import cl.duocuc.pedidos360.pedidos.service.PedidoNotFoundException;
@@ -23,16 +24,19 @@ class PedidoServiceTest {
 
     private PedidoRepository pedidoRepository;
     private PedidoProducer pedidoProducer;
+    private PedidoEventoProducer pedidoEventoProducer;
     private PedidoService pedidoService;
 
     @BeforeEach
     void setUp() {
         pedidoRepository = mock(PedidoRepository.class);
         pedidoProducer = mock(PedidoProducer.class);
+        pedidoEventoProducer = mock(PedidoEventoProducer.class);
 
         pedidoService = new PedidoService(
                 pedidoRepository,
-                pedidoProducer
+                pedidoProducer,
+                pedidoEventoProducer
         );
     }
 
@@ -68,6 +72,9 @@ class PedidoServiceTest {
 
         verify(pedidoProducer, times(1))
                 .publicarPedidoCreado(resultado);
+
+        verify(pedidoEventoProducer, times(1))
+                .publicarCreado(resultado);
     }
 
     @Test
@@ -83,7 +90,7 @@ class PedidoServiceTest {
     }
 
     @Test
-    void cambiarEstado_deberiaActualizarElEstado() {
+    void cambiarEstado_deberiaActualizarElEstadoYPublicarEventoEnKafka() {
 
         Pedido pedidoExistente = new Pedido();
         pedidoExistente.setId(1L);
@@ -105,5 +112,8 @@ class PedidoServiceTest {
                 EstadoPedido.ENVIADO,
                 actualizado.getEstado()
         );
+
+        verify(pedidoEventoProducer, times(1))
+                .publicarEstadoCambiado(actualizado);
     }
 }
