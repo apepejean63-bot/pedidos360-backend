@@ -1,5 +1,7 @@
 package cl.duocuc.pedidos360.notificaciones.listener;
 
+import cl.duocuc.pedidos360.notificaciones.error.ServicioCorreoNoDisponibleException;
+import cl.duocuc.pedidos360.notificaciones.error.ValidadorEventos;
 import cl.duocuc.pedidos360.notificaciones.event.PedidoEventoDTO;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -18,7 +20,17 @@ public class NotificacionesListener {
             groupId = "notificaciones",
             containerFactory = "eventosNotificacionesFactory")
     public void alRecibirEvento(ConsumerRecord<String, PedidoEventoDTO> registro) {
+        ValidadorEventos.validarEvento(registro);
         PedidoEventoDTO evento = registro.value();
+
+        // Simulacion para la demo: los correos @falla.test representan una caida del proveedor de correo
+        if (evento.email().endsWith("@falla.test")) {
+            log.warn("[notificaciones] Proveedor de correo no disponible para pedido {} (particion={} offset={})",
+                    evento.pedidoId(), registro.partition(), registro.offset());
+            throw new ServicioCorreoNoDisponibleException(
+                    "Proveedor de correo no disponible (simulado) para el pedido " + evento.pedidoId());
+        }
+
         log.info("[notificaciones] Enviando correo a {} por pedido {} ({}) hilo={} particion={} offset={}",
                 evento.email(), evento.pedidoId(), evento.tipo(),
                 Thread.currentThread().getName(), registro.partition(), registro.offset());

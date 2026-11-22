@@ -1,5 +1,6 @@
 package cl.duocuc.pedidos360.notificaciones.listener;
 
+import cl.duocuc.pedidos360.notificaciones.error.ValidadorEventos;
 import cl.duocuc.pedidos360.notificaciones.event.PedidoEventoDTO;
 import java.math.BigDecimal;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Grupo "analitica": lee los mismos eventos que "notificaciones", pero con su
  * propio offset, asi que recibe todos los mensajes de forma independiente.
+ * Si un mensaje es invalido, se registra el error y se sigue con el siguiente.
  */
 @Component
 public class AnaliticaListener {
@@ -25,6 +27,7 @@ public class AnaliticaListener {
             groupId = "analitica",
             containerFactory = "eventosFactory")
     public synchronized void alRecibirEvento(ConsumerRecord<String, PedidoEventoDTO> registro) {
+        ValidadorEventos.validarEvento(registro);
         PedidoEventoDTO evento = registro.value();
         totalPedidos++;
         montoAcumulado = montoAcumulado.add(evento.total());
