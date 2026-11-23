@@ -1,5 +1,6 @@
 package cl.duocuc.pedidos360.pedidos.messaging;
 
+import cl.duocuc.pedidos360.pedidos.config.RabbitMQTopicConfig;
 import cl.duocuc.pedidos360.pedidos.entity.Pedido;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,15 +36,12 @@ public class PedidoProducer {
                 pedido.getEstado()
         );
 
-        rabbitTemplate.convertAndSend(
-                exchange,
-                routingKey,
-                mensaje
-        );
+        // Exchange direct -> pedidos.queue
+        rabbitTemplate.convertAndSend(exchange, routingKey, mensaje);
 
-        log.info(
-                "Mensaje RabbitMQ publicado. Pedido ID: {}",
-                pedido.getId()
-        );
+        // Exchange topic -> notificaciones.queue y auditoria.queue
+        rabbitTemplate.convertAndSend(RabbitMQTopicConfig.TOPIC_EXCHANGE, "pedido.creado", mensaje);
+
+        log.info("Mensaje RabbitMQ publicado (direct y topic). Pedido ID: {}", pedido.getId());
     }
 }
