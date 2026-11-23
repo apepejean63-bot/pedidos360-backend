@@ -69,11 +69,16 @@ public class PedidoProxyController {
 
         HttpEntity<String> entity = new HttpEntity<>(body, headers);
 
-        return restTemplate.exchange(
+        ResponseEntity<String> respuesta = restTemplate.exchange(
                 pedidosServiceUrl + "/api/v1/pedidos" + path,
                 metodo,
                 entity,
                 String.class
         );
+
+        // No se copian las cabeceras del upstream (evita Transfer-Encoding duplicado)
+        return ResponseEntity.status(respuesta.getStatusCode())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(respuesta.getBody());
     }
 }
